@@ -2,4 +2,3 @@
 version = 1
 elf = "build/DAQ_Telemetry_Wokwi.elf"
 firmware = "build/DAQ_Telemetry_Wokwi.hex"
-gdbServerPort = 3333
