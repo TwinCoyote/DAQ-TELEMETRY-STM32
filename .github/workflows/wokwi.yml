@@ -1,0 +1,39 @@
+name: Wokwi build & simulation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-simulate:
+    runs-on: ubuntu-latest
+    env:
+      WOKWI_CLI_TOKEN: ${{ secrets.WOKWI_CLI_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ARM toolchain
+        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi make
+
+      - name: Build firmware (STM32C031C6)
+        working-directory: wokwi
+        run: make
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: DAQ_Telemetry_Wokwi
+          path: |
+            wokwi/build/*.elf
+            wokwi/build/*.hex
+
+      # Only runs when the WOKWI_CLI_TOKEN repository secret is configured.
+      - name: Install wokwi-cli
+        if: ${{ env.WOKWI_CLI_TOKEN != '' }}
+        run: curl -L https://wokwi.com/ci/install.sh | sh
+
+      - name: Run Wokwi simulation
+        if: ${{ env.WOKWI_CLI_TOKEN != '' }}
+        working-directory: wokwi
+        run: ~/.wokwi/bin/wokwi-cli . --timeout 5000 --expect-text "Voltage"

@@ -1,6 +1,6 @@
 # DAQ Telemetry
 
-Sistema de adquisición de datos (DAQ) mínimo para microcontrolador STM32: muestrea una señal analógica a una frecuencia fija con un timer y envía cada lectura por UART en formato legible.
+A minimal data acquisition (DAQ) system for an STM32 microcontroller: it samples an analog signal at a fixed rate using a timer and sends each reading over UART in a human-readable format.
 
 ```
 ADC: 2048 | Voltage: 1.65 V
@@ -8,113 +8,113 @@ ADC: 2051 | Voltage: 1.65 V
 ADC: 3120 | Voltage: 2.51 V
 ```
 
-## Cómo funciona
+## How it works
 
-1. **TIM** genera una interrupción a **10 Hz**; la ISR solo incrementa un contador (`sample_count`).
-2. El **bucle principal** compara `sample_count` con `processed_count`. Por cada tick pendiente:
-   - Lanza una conversión del **ADC1 canal 0** (12 bits, por polling) con `ADC_Read()`.
-   - Convierte el valor crudo a voltaje: `V = raw / 4095 * 3.3`.
-   - Envía la línea de texto por **USART2** (115200 8N1).
+1. **TIM** generates an interrupt at **10 Hz**; the ISR only increments a counter (`sample_count`).
+2. The **main loop** compares `sample_count` with `processed_count`. For each pending tick it:
+   - Starts a conversion on **ADC1 channel 0** (12-bit, polling) with `ADC_Read()`.
+   - Converts the raw value to a voltage: `V = raw / 4095 * 3.3`.
+   - Sends the text line over **USART2** (115200 8N1).
 
-Mantener la ISR mínima y hacer el trabajo en el bucle principal evita bloquear interrupciones durante la conversión y la transmisión. Si la transmisión se atrasa, los ticks pendientes se procesan después en vez de perderse.
+Keeping the ISR minimal and doing the work in the main loop avoids blocking interrupts during conversion and transmission. If transmission falls behind, pending ticks are processed later instead of being lost.
 
 ## Hardware
 
-| Señal      | Pin     | Notas                                  |
-|------------|---------|----------------------------------------|
-| ADC1_IN0   | PA0     | Entrada analógica 0 – 3.3 V            |
-| USART2_TX  | PA2     | Telemetría (VCP del ST-LINK en Nucleo) |
-| USART2_RX  | PA3     |                                        |
-| SWDIO/SWCLK| PA13/14 | Depuración                             |
+| Signal      | Pin     | Notes                                   |
+|-------------|---------|-----------------------------------------|
+| ADC1_IN0    | PA0     | Analog input 0 – 3.3 V                  |
+| USART2_TX   | PA2     | Telemetry (ST-LINK VCP on Nucleo)       |
+| USART2_RX   | PA3     |                                         |
+| SWDIO/SWCLK | PA13/14 | Debugging                               |
 
-Hay **dos variantes** del firmware en este repositorio:
+There are **two firmware variants** in this repository:
 
-| Variante                | Carpeta   | MCU            | Uso                              |
+| Variant                 | Folder    | MCU            | Use                              |
 |-------------------------|-----------|----------------|----------------------------------|
-| Hardware real           | raíz      | STM32F401RET6  | Se carga en la placa física      |
-| Simulación en **Wokwi** | `wokwi/`  | STM32C031C6    | Se prueba sin hardware           |
+| Real hardware           | root      | STM32F401RET6  | Flashed to the physical board    |
+| **Wokwi** simulation    | `wokwi/`  | STM32C031C6    | Tested without hardware          |
 
-## Variante hardware (STM32F401RE)
+## Hardware variant (STM32F401RE)
 
-- Proyecto de **STM32CubeIDE** (configuración en `DAQ_Telemetry_New.ioc`).
-- Reloj: HSI 16 MHz sin PLL. TIM2: prescaler 1599, periodo 999 → 10 Hz.
-- Para compilar y cargar: abrir la carpeta como proyecto existente en STM32CubeIDE, compilar (`Debug`) y ejecutar con el ST-LINK. Para ver la salida, abrir el puerto serie del ST-LINK a 115200 baud.
+- **STM32CubeIDE** project (configuration in `DAQ_Telemetry_New.ioc`).
+- Clock: HSI 16 MHz, no PLL. TIM2: prescaler 1599, period 999 → 10 Hz.
+- To build and flash: open the folder as an existing project in STM32CubeIDE, build (`Debug`) and run with the ST-LINK. To see the output, open the ST-LINK serial port at 115200 baud.
 
-## Simulación en Wokwi
+## Wokwi simulation
 
-Wokwi no simula la familia STM32F4, así que `wokwi/` contiene un port del mismo firmware a la **Nucleo-C031C6** (`board-st-nucleo-c031c6`), que sí soporta ADC, USART y timers.
+Wokwi does not simulate the STM32F4 family, so `wokwi/` contains a port of the same firmware to the **Nucleo-C031C6** (`board-st-nucleo-c031c6`), which does support ADC, USART and timers.
 
-### Diferencias respecto a la versión F401
+### Differences from the F401 version
 
-| Aspecto            | F401 (hardware)         | C031C6 (Wokwi)                            |
-|--------------------|-------------------------|-------------------------------------------|
-| HAL                | STM32F4xx               | STM32C0xx                                 |
-| Reloj              | HSI 16 MHz              | HSI 48 MHz                                |
-| Timer de muestreo  | TIM2                    | TIM3 (el C031 no tiene TIM2); sigue a 10 Hz|
-| USART2 AF          | AF7                     | AF1                                       |
-| Voltaje en el texto| `float` + `%.2f`        | Aritmética entera (salida idéntica); el C031C6 solo tiene 32 KB de flash |
-| Señal en PA0       | Fuente externa          | Potenciómetro virtual                     |
+| Aspect               | F401 (hardware)         | C031C6 (Wokwi)                            |
+|----------------------|-------------------------|-------------------------------------------|
+| HAL                  | STM32F4xx               | STM32C0xx                                 |
+| Clock                | HSI 16 MHz              | HSI 48 MHz                                |
+| Sampling timer       | TIM2                    | TIM3 (the C031 has no TIM2); still 10 Hz  |
+| USART2 AF            | AF7                     | AF1                                       |
+| Voltage in the text  | `float` + `%.2f`        | Integer arithmetic (identical output); the C031C6 has only 32 KB of flash |
+| Signal on PA0        | External source         | Virtual potentiometer                     |
 
-La lógica de la aplicación (timer → contador → lectura ADC → UART) es la misma.
+The application logic (timer → counter → ADC read → UART) is the same.
 
-### Requisitos
+### Requirements
 
-- `arm-none-eabi-gcc` y `make`. Si usas STM32CubeIDE ya tienes el compilador en `plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.*/tools/bin`.
-- Una de estas formas de ejecutar Wokwi:
-  - Extensión **Wokwi for VS Code** (requiere licencia/inicio de sesión gratuito de Wokwi), o
-  - **wokwi-cli** con la variable `WOKWI_CLI_TOKEN` (token en <https://wokwi.com/dashboard/ci>).
+- `arm-none-eabi-gcc` and `make`. If you use STM32CubeIDE you already have the compiler in `plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.*/tools/bin`.
+- One of these ways to run Wokwi:
+  - The **Wokwi for VS Code** extension (requires a free Wokwi license/sign-in), or
+  - **wokwi-cli** with the `WOKWI_CLI_TOKEN` variable (token at <https://wokwi.com/dashboard/ci>).
 
-### Compilar
+### Build
 
 ```bash
 cd wokwi
 make
-# si el compilador no está en el PATH:
+# if the compiler is not in your PATH:
 make GCC_PATH="C:/ST/STM32CubeIDE_1.19.0/STM32CubeIDE/plugins/<gnu-tools-for-stm32...>/tools/bin"
 ```
 
-Genera `wokwi/build/DAQ_Telemetry_Wokwi.elf` y `.hex`, que son los que referencia `wokwi/wokwi.toml`.
+This produces `wokwi/build/DAQ_Telemetry_Wokwi.elf` and `.hex`, which are the files referenced by `wokwi/wokwi.toml`.
 
-### Ejecutar
+### Run
 
-**VS Code:** abre la carpeta `wokwi/`, ejecuta `make` y usa *Wokwi: Start Simulator* (F1). Mueve el potenciómetro y observa el monitor serie.
+**VS Code:** open the `wokwi/` folder, run `make` and use *Wokwi: Start Simulator* (F1). Move the potentiometer and watch the serial monitor.
 
-**Línea de comandos:**
+**Command line:**
 
 ```bash
 cd wokwi
-export WOKWI_CLI_TOKEN=<tu_token>
+export WOKWI_CLI_TOKEN=<your_token>
 wokwi-cli . --timeout 5000 --expect-text "Voltage"
 ```
 
-### Circuito (`wokwi/diagram.json`)
+### Circuit (`wokwi/diagram.json`)
 
-| Potenciómetro | Nucleo-C031C6 |
+| Potentiometer | Nucleo-C031C6 |
 |---------------|---------------|
 | SIG           | PA0           |
 | VCC           | 3V3           |
 | GND           | GND           |
 
-El monitor serie de Wokwi está conectado a PA2 (TX) / PA3 (RX) de USART2.
+The Wokwi serial monitor is connected to PA2 (TX) / PA3 (RX) of USART2.
 
-## Estructura
+## Structure
 
 ```
 .
-├── Core/                  # Aplicación F401 (main.c, ISR, MSP)
-├── Drivers/               # HAL STM32F4xx + CMSIS
-├── DAQ_Telemetry_New.ioc  # Configuración de STM32CubeMX
-├── STM32F401RETX_*.ld     # Linker scripts F401
-└── wokwi/                 # Port para simulación en Wokwi
-    ├── Core/              # main.c, ISR, MSP del C031C6
-    ├── Drivers/           # HAL STM32C0xx + CMSIS device C0
-    ├── Makefile           # Build con arm-none-eabi-gcc
-    ├── wokwi.toml         # Configuración del simulador
-    └── diagram.json       # Circuito (Nucleo-C031C6 + potenciómetro)
+├── Core/                  # F401 application (main.c, ISR, MSP)
+├── Drivers/               # STM32F4xx HAL + CMSIS
+├── DAQ_Telemetry_New.ioc  # STM32CubeMX configuration
+├── STM32F401RETX_*.ld     # F401 linker scripts
+└── wokwi/                 # Port for Wokwi simulation
+    ├── Core/              # C031C6 main.c, ISR, MSP
+    ├── Drivers/           # STM32C0xx HAL + C0 CMSIS device
+    ├── Makefile           # Build with arm-none-eabi-gcc
+    ├── wokwi.toml         # Simulator configuration
+    └── diagram.json       # Circuit (Nucleo-C031C6 + potentiometer)
 ```
 
-Los headers CMSIS core (`core_cm0plus.h`, etc.) se reutilizan de `Drivers/CMSIS/Include` en la raíz.
+The CMSIS core headers (`core_cm0plus.h`, etc.) are reused from `Drivers/CMSIS/Include` in the root.
 
-## Licencia
+## License
 
-Los drivers HAL y CMSIS pertenecen a STMicroelectronics / Arm y conservan sus licencias (ver los `LICENSE` en `Drivers/`).
+The HAL and CMSIS drivers belong to STMicroelectronics / Arm and keep their own licenses (see the `LICENSE` files in `Drivers/`).
