@@ -59,6 +59,7 @@ static void MX_ADC1_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
+HAL_StatusTypeDef ADC_Read(uint32_t *value);
 
 /* USER CODE END PFP */
 
@@ -116,49 +117,50 @@ int main(void) {
 
 		if (sample_count > processed_count) {
 
+			if(ADC_Read(&rawValue)==HAL_OK){
+				voltage = ((rawValue / res) * Vref);
+				int len = snprintf(message, sizeof(message),
+						"ADC: %lu | Voltage: %.2f V\r\n",
+						(unsigned long) rawValue, (double) voltage);
+				HAL_UART_Transmit(&huart2, (uint8_t*) message, len, 100);
 
-			HAL_StatusTypeDef Sttus = HAL_ADC_Start(&hadc1);
-			if (Sttus == HAL_OK) {
-				if (HAL_ADC_PollForConversion(&hadc1, 100) == HAL_OK) {
-					processed_count++;
-					rawValue = HAL_ADC_GetValue(&hadc1);
-					voltage = ((rawValue / res) * Vref);
-					int len = snprintf(message, sizeof(message),
-							"ADC: %lu | Voltage: %.2f V\r\n",
-							(unsigned long) rawValue, (double) voltage);
-					HAL_UART_Transmit(&huart2, (uint8_t*) message, len, 100);
-				}
-				HAL_ADC_Stop(&hadc1);
 			}
+			processed_count++;
 
 		}
 
 	}
+
+
+
+//	while (1) {
+//		/* USER CODE END WHILE */
+//
+//		/* USER CODE BEGIN 3 */
+//
+//		if (sample_count > processed_count) {
+//
+//			HAL_StatusTypeDef Sttus = HAL_ADC_Start(&hadc1);
+//			if (Sttus == HAL_OK) {
+//				if (HAL_ADC_PollForConversion(&hadc1, 100) == HAL_OK) {
+//					processed_count++;
+//					rawValue = HAL_ADC_GetValue(&hadc1);
+//					voltage = ((rawValue / res) * Vref);
+//					int len = snprintf(message, sizeof(message),
+//							"ADC: %lu | Voltage: %.2f V\r\n",
+//							(unsigned long) rawValue, (double) voltage);
+//					HAL_UART_Transmit(&huart2, (uint8_t*) message, len, 100);
+//				}
+//				HAL_ADC_Stop(&hadc1);
+//			}
+//
+//		}
+//
+//	}
 	/* USER CODE END 3 */
 }
 
-//while (1)
-// {
-//   /* USER CODE END WHILE */
-//
-//   /* USER CODE BEGIN 3 */
-//   HAL_ADC_Start(&hadc1);
-//
-//   if (HAL_ADC_PollForConversion(&hadc1, 100) == HAL_OK)
-//   {
-//     rawValue = HAL_ADC_GetValue(&hadc1);
-//     voltage = ((rawValue / res) * Vref);
-////      int len = snprintf(message, sizeof(message), "ADC: %lu | Voltage: %.2f V\r\n", (unsigned long)rawValue, (double)voltage);
-//     int len = snprintf(message, sizeof(message), "Interruptions: %lu\r\n ", (unsigned long)sample_count);
-//     HAL_UART_Transmit(&huart2, (uint8_t *)message, len, 100);
-////      HAL_UART_Transmit(&huart2, (uint8_t *)sample_count, len, 100);
-//   }
-//
-//   HAL_ADC_Stop(&hadc1);
-//   HAL_Delay(1000);
-// }
-// /* USER CODE END 3 */
-//}
+
 
 /**
  * @brief System Clock Configuration
@@ -344,6 +346,24 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if (htim->Instance == TIM2) {
 		sample_count++;
 	}
+
+}
+
+HAL_StatusTypeDef ADC_Read(uint32_t *value) {
+
+	HAL_StatusTypeDef status_start, status_conversion;
+
+	status_start = HAL_ADC_Start(&hadc1);
+
+	if (status_start == HAL_OK) {
+		status_conversion = HAL_ADC_PollForConversion(&hadc1, 100);
+		if (status_conversion == HAL_OK) {
+			*value = HAL_ADC_GetValue(&hadc1);
+		}
+		HAL_ADC_Stop(&hadc1);
+		return status_conversion;
+	}
+	return status_start;
 
 }
 
