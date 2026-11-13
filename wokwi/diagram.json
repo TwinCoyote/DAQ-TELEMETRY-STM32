@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "author": "DAQ Telemetry",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-st-nucleo-c031c6",
+      "id": "nucleo",
+      "top": -37.71,
+      "left": -264.45,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "pot1",
+      "top": -125.3,
+      "left": -77.0,
+      "attrs": {}
+    }
+  ],
+  "connections": [
+    [ "$serialMonitor:TX", "nucleo:PA3", "", [] ],
+    [ "$serialMonitor:RX", "nucleo:PA2", "", [] ],
+    [ "pot1:SIG", "nucleo:PA0", "green", [ "v0" ] ],
+    [ "pot1:VCC", "nucleo:3V3.1", "red", [ "v0" ] ],
+    [ "pot1:GND", "nucleo:GND.1", "black", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}

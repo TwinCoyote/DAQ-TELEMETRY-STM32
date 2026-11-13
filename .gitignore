@@ -8,3 +8,6 @@ Release/
 *.map
 *.list
 .metadata/
+wokwi/build/
+*.hex
+*.bin

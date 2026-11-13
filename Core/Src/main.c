@@ -102,6 +102,8 @@ int main(void) {
 	/* USER CODE BEGIN 2 */
 	uint32_t processed_count = 0U;
 	uint32_t rawValue = 0U;
+	uint32_t pending_samples = 0U;
+	uint32_t max_pending_samples = 0U;
 	char message[48];
 	float voltage = 0.0f;
 
@@ -114,24 +116,31 @@ int main(void) {
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
+		pending_samples = sample_count - processed_count;
+		if (pending_samples > max_pending_samples) {
 
-		if (sample_count > processed_count) {
+			max_pending_samples = pending_samples;
+		}
 
-			if(ADC_Read(&rawValue)==HAL_OK){
-				voltage = ((rawValue / res) * Vref);
-				int len = snprintf(message, sizeof(message),
-						"ADC: %lu | Voltage: %.2f V\r\n",
-						(unsigned long) rawValue, (double) voltage);
-				HAL_UART_Transmit(&huart2, (uint8_t*) message, len, 100);
+		if (pending_samples > 0U) {
+			{
+				if (ADC_Read(&rawValue) == HAL_OK) {
+					voltage = ((rawValue / res) * Vref);
+					int len =
+							snprintf(message, sizeof(message),
+									"ADC: %lu | Voltage: %.2f V | Max_Samples: %lu\r\n",
+									(unsigned long) rawValue, (double) voltage,
+									(unsigned long) max_pending_samples);
+					HAL_Delay(250);
+					HAL_UART_Transmit(&huart2, (uint8_t*) message, len, 100);
+
+				}
+				processed_count++;
 
 			}
-			processed_count++;
-
 		}
 
 	}
-
-
 
 //	while (1) {
 //		/* USER CODE END WHILE */
@@ -159,8 +168,6 @@ int main(void) {
 //	}
 	/* USER CODE END 3 */
 }
-
-
 
 /**
  * @brief System Clock Configuration
